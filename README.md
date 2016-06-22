@@ -1,5 +1,5 @@
 # Lost in translation
-### Rails i18n web interface
+### Rails i18n web interface for mongoid
 
 
 
@@ -18,10 +18,14 @@ I adjusted most features, but there is still a lot to do:
 
 Please don't hesitate to contact me if you want more information, or wish to contribute. I'm still new to mongoid and certainly have a lot to learn. 
 
+#######################################
+
+# Original description of the project
+
+#######################################
 
 
-
-
+### Rails i18n web interface for mongoid
 
 #######################################
 
