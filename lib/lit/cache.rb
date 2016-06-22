@@ -75,7 +75,8 @@ module Lit
       if !first || !last || (!localizations.has_key?(first.full_key) ||
         !localizations.has_key?(last.full_key))
 
-        Localization.includes([:locale, :localization_key]).find_each do |l|
+       # Localization.includes([:locale, :localization_key]).find_each do |l|
+       Localization.includes([:locale, :localization_key]).all.each do |l|       
           localizations[l.full_key] = l.get_value
         end
       end
@@ -178,7 +179,7 @@ module Lit
 
     def find_localization(locale, key_without_locale, value = nil, force_array = false, update_value = false)
       unless value.is_a?(Hash)
-        ActiveRecord::Base.transaction do
+#        ActiveRecord::Base.transaction do
           localization_key = find_localization_key(key_without_locale)
           localization = Lit::Localization.where(locale_id: locale.id).
                             where(localization_key_id: localization_key.id).first_or_initialize
@@ -214,7 +215,7 @@ module Lit
           end
           return localization
 
-        end
+     #   end
       else
         nil
       end
@@ -267,12 +268,16 @@ module Lit
       unless localization_keys.has_key?(key_without_locale)
         find_or_create_localization_key(key_without_locale)
       else
-        Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) || find_or_create_localization_key(key_without_locale)
+        #Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) || find_or_create_localization_key(key_without_locale)
+        Lit::LocalizationKey.where(id: localization_keys[key_without_locale]).first || find_or_create_localization_key(key_without_locale)
       end
     end
 
     def find_localization_key_for_delete(key_without_locale)
-      lk = Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) if localization_keys.has_key?(key_without_locale)
+      if localization_keys.has_key?(key_without_locale)
+        #lk = Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) 
+        lk = Lit::LocalizationKey.where(id: localization_keys[key_without_locale]).first
+      end
       lk || Lit::LocalizationKey.where(localization_key: key_without_locale).first
     end
 

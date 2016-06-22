@@ -1,6 +1,16 @@
 require 'net/http'
 module Lit
-  class Source < ActiveRecord::Base
+  class Source
+    include Mongoid::Document
+    include Mongoid::Timestamps
+    
+    
+    field :identifier, type: String
+    field :url, type: String
+    field :api_key, type: String
+    field :last_updated_at, type: DateTime
+    
+    
     LOCALES_PATH = '/api/v1/locales.json'
     LOCALIZATION_KEYS_PATH = '/api/v1/localization_keys.json'
     LOCALIZATIONS_PATH = '/api/v1/localizations.json'

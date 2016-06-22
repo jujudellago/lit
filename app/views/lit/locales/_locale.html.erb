@@ -1,0 +1,8 @@
+
+   <td><%= locale %></td>
+	<td><%= I18n.available_locales.include?(locale.locale.to_sym) %></td>
+   <td>
+     <span id="hide_link_<%= locale.id %>"><%= link_to locale.is_hidden? ? 'Show' : 'Hide', hide_locale_path(locale), :method=>:put, :remote=>true %>
+<%#= render :partial=>"hide_link", :locals=>{:locale=>locale} %></span>
+     <%= link_to 'Destroy', locale, method: :delete, data: { confirm: 'Are you sure?' } %>
+   </td>

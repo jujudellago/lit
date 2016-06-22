@@ -1,6 +1,31 @@
 # Lost in translation
 ### Rails i18n web interface
 
+
+
+This is an experimental implementation for Mongo DB using Mongoid.
+
+On it's first commit, 22.06.2016 the system is almost operational, but lacks test.
+
+I adjusted most features, but there is still a lot to do:
+
+- sorting by keys
+- searching specific keys
+- ordering keys
+- TESTING
+
+
+
+Please don't hesitate to contact me if you want more information, or wish to contribute. I'm still new to mongoid and certainly have a lot to learn. 
+
+
+
+
+
+
+#######################################
+
+
 Translate your apps with pleasure (sort of...) and for free. It's simple i18n
 web interface, build on top of twitter bootstrap, that one may find helpful in
 translating app by non-technicals.

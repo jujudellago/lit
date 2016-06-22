@@ -1,1 +1,8 @@
-$('#hide_link_<%= @locale.id %>').html("<%= j render(:partial=>"hide_link", :locals=>{:locale=>@locale}) %>");
+<%- kls=@locale.is_hidden ? "danger" : "" -%>
+$('#locale_<%= @locale.id %>').html("<%= j render(:partial=>"locale", :locals=>{:locale=>@locale}) %>");
+if ($('#locale_<%= @locale.id %>').hasClass('danger')){
+	$('#locale_<%= @locale.id %>').removeClass('danger');
+}
+else{
+	$('#locale_<%= @locale.id %>').addClass('<%=kls%>');
+}

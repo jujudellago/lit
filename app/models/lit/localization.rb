@@ -1,7 +1,19 @@
 module Lit
-  class Localization < ActiveRecord::Base
-    serialize :translated_value
-    serialize :default_value
+  class Localization 
+    include Mongoid::Document
+    include Mongoid::Timestamps
+
+   # serialize :translated_value
+   # serialize :default_value
+
+
+    field :locale_id, type: Integer
+    field :localization_key_id, type: Integer
+    field :default_value, type: String
+    field :translated_value, type: String
+    field :is_changed, type: Mongoid::Boolean,  default: false
+
+
 
     ## SCOPES
     scope :changed, proc { where(is_changed: true) }
@@ -12,9 +24,9 @@ module Lit
     }
 
     ## ASSOCIATIONS
-    belongs_to :locale
-    belongs_to :localization_key, touch: true
-    has_many :localization_versions, dependent: :destroy
+    belongs_to :locale, class_name: '::Lit::Locale'
+    belongs_to :localization_key, touch: true, class_name: '::Lit::LocalizationKey'
+    has_many :localization_versions, dependent: :destroy, class_name: '::Lit::LocalizationVersion'
     has_many :versions, class_name: '::Lit::LocalizationVersion'
 
     ## VALIDATIONS

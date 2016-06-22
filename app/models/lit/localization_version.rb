@@ -1,6 +1,16 @@
 module Lit
-  class LocalizationVersion < ActiveRecord::Base
-    serialize :translated_value
+  class LocalizationVersion
+    
+    include Mongoid::Document
+    include Mongoid::Timestamps
+    
+
+    field :localization_id, type: Integer
+    field :translated_value, type: String
+
+    
+    
+ #   serialize :translated_value
 
     ## ASSOCIATIONS
     belongs_to :localization

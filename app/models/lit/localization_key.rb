@@ -1,6 +1,14 @@
 module Lit
-  class LocalizationKey < ActiveRecord::Base
+  class LocalizationKey
+    include Mongoid::Document
+    include Mongoid::Timestamps
+    
     attr_accessor :interpolated_key
+
+    field :localization_key, type: String
+    field :is_completed, type: Mongoid::Boolean,  default: false
+    field :is_starred, type: Mongoid::Boolean,  default: false
+
 
     ## SCOPES
     scope :completed, proc { where(is_completed: true) }
@@ -14,7 +22,7 @@ module Lit
     }
 
     ## ASSOCIATIONS
-    has_many :localizations, dependent: :destroy
+    has_many :localizations, dependent: :destroy, class_name: '::Lit::Localization'
 
     ## VALIDATIONS
     validates :localization_key,
@@ -44,7 +52,8 @@ module Lit
     end
 
     def mark_completed
-      self.is_completed = localizations.changed.count(:id) == localizations.count
+     # self.is_completed = localizations.all.changed.count(:id) == localizations.all.count
+     self.is_completed = localizations.all.changed.count == localizations.all.count
     end
 
     def mark_completed!
@@ -65,7 +74,23 @@ module Lit
       {}
     end
 
-    def self.search(options = {})
+    def self.search(options={})
+        options = options.reverse_merge(default_search_options)
+        s = self
+        if options[:key_prefix].present?
+        #  q = "#{options[:key_prefix]}%"
+#          s = s.where(localization_key.matches(q))
+          regex=/^#{options[:key_prefix]}/
+          s=s.where({"localization_key": regex})
+        end
+        unless options[:include_completed].to_i == 1
+           s = s.not_completed
+         end
+         s
+    end
+
+
+    def self.old_search(options = {})
       options = options.reverse_merge(default_search_options)
       s = self
       if options[:order] && order_options.include?(options[:order])

@@ -22,7 +22,8 @@ module Lit
 
     def available_locales
       return @available_locales_cache unless @available_locales_cache.nil?
-      locales = ::Rails.configuration.i18n.available_locales
+      #locales = ::Rails.configuration.i18n.available_locales
+      locales = I18n.available_locales
       if locales && !locales.empty?
         @available_locales_cache = locales.map(&:to_sym)
       else
@@ -41,9 +42,9 @@ module Lit
     # @param [Hash] data nested key-value pairs to be added as blurbs
     def store_translations(locale, data, options = {})
       super
-      ActiveRecord::Base.transaction do
-        store_item(locale, data)
-      end if store_items? && valid_locale?(locale)
+     # ActiveRecord::Base.transaction do
+        store_item(locale, data) if store_items? && valid_locale?(locale)
+    #  end 
     end
 
     private
@@ -100,11 +101,11 @@ module Lit
     end
 
     def load_translations_to_cache
-      ActiveRecord::Base.transaction do
+     # ActiveRecord::Base.transaction do
         (@translations || {}).each do |locale, data|
           store_item(locale, data) if valid_locale?(locale)
         end
-      end
+      #end
     end
 
     def init_translations

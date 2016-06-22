@@ -1,11 +1,22 @@
 module Lit
-  class Locale < ActiveRecord::Base
+  class Locale 
+    include Mongoid::Document
+    include Mongoid::Timestamps
+  
     ## SCOPES
     scope :ordered, proc { order('locale ASC') }
     scope :visible, proc { where(is_hidden: false) }
 
+
+
+    field :locale, type: String
+    field :is_hidden, type: Mongoid::Boolean,  default: false
+  
+
+
+
     ## ASSOCIATIONS
-    has_many :localizations, dependent: :destroy
+    has_many :localizations, dependent: :destroy, class_name: '::Lit::Localization'
 
     ## VALIDATIONS
     validates :locale,

@@ -24,7 +24,7 @@ module Lit
     end
 
     def destroy
-      @localization_key = LocalizationKey.find params[:id].to_i
+      @localization_key = LocalizationKey.find params[:id]
       @localization_key.destroy
       I18n.backend.available_locales.each do |l|
         Lit.init.cache.delete_key "#{l}.#{@localization_key.localization_key}"
@@ -37,12 +37,16 @@ module Lit
     def get_localization_scope
       @search_options = params.slice(*valid_keys)
       @search_options[:include_completed] = '1' if @search_options.empty?
-      @scope = LocalizationKey.uniq.preload(localizations: :locale).search(@search_options)
+      #@scope = LocalizationKey.uniq.preload(localizations: :locale).search(@search_options)
+      @scope = LocalizationKey.search(@search_options)
     end
 
     def get_localization_keys
       key_parts = @search_options[:key_prefix].to_s.split('.').length
-      @prefixes = @scope.reorder(nil).uniq.pluck(:localization_key).map { |lk| lk.split('.').shift(key_parts + 1).join('.') }.uniq.sort
+     # @prefixes = @scope.reorder(nil).uniq.pluck(:localization_key).map { |lk| lk.split('.').shift(key_parts + 1).join('.') }.uniq.sort
+       @prefixes = @scope.reorder(nil).pluck(:localization_key).map { |lk| lk.split('.').shift(key_parts + 1).join('.') }.uniq.sort
+      
+      
       if @search_options[:key_prefix].present?
         parts = @search_options[:key_prefix].split('.')
         @parent_prefix = parts[0, parts.length - 1].join('.')
@@ -94,9 +98,14 @@ module Lit
     def has_versions?(localization)
       @_versions ||= begin
         ids = grouped_localizations.values.map(&:values).flatten.map(&:id)
-        Lit::Localization.where(id: ids).joins(:versions).group("#{Lit::Localization.quoted_table_name}.id").count
+        
+        #Lit::Localization.where(id: ids).joins(:versions).group("#{Lit::Localization.quoted_table_name}.id").count
+        lids=Lit::Localization.where(id: ids).pluck(:id)
+        Lit::LocalizationVersion.where(localization_id: lids).count
+        
       end
-      @_versions[localization.id].to_i > 0
+      #@_versions[localization._id].to_i > 0
+      @_versions.to_i > 0
     end
 
     helper_method :has_versions?

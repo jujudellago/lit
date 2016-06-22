@@ -1,12 +1,25 @@
 module Lit
-  class IncommingLocalization < ActiveRecord::Base
-    serialize :translated_value
+  class IncommingLocalization 
+    include Mongoid::Document
+    include Mongoid::Timestamps    
+   # serialize :translated_value
 
     ## ASSOCIATIONS
     belongs_to :locale
     belongs_to :localization_key
     belongs_to :localization
     belongs_to :source
+    
+            
+    field :translated_value, type: String
+    field :locale_id,      type: Integer
+    field :localization_key_id,      type: Integer
+    field :localization_id,      type: Integer
+    field :locale_str, type: String
+    field :localization_key_str, type: String
+    field :source_id,      type: Integer
+    field :incomming_id,      type: Integer
+    
 
     unless defined?(::ActionController::StrongParameters)
       attr_accessible

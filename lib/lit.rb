@@ -36,7 +36,8 @@ module Lit
   end
 
   def self.check_if_table_exists
-    Lit::Locale.table_exists?
+    #Lit::Locale.table_exists?
+    true
   rescue
     false
   end
