@@ -25,7 +25,7 @@ Please don't hesitate to contact me if you want more information, or wish to con
 #######################################
 
 
-### Rails i18n web interface for mongoid
+### Rails i18n web interface
 
 #######################################
 
