@@ -5,6 +5,7 @@ module Lit
   mattr_accessor :authentication_function
   mattr_accessor :key_value_engine
   mattr_accessor :storage_options
+  mattr_accessor :redis_hash
   mattr_accessor :humanize_key
   mattr_accessor :ignored_keys
   mattr_accessor :fallback
@@ -45,6 +46,7 @@ module Lit
   def self.get_key_value_engine
     case Lit.key_value_engine
         when 'redis'
+          
           require 'lit/adapters/redis_storage'
           return RedisStorage.new
         else

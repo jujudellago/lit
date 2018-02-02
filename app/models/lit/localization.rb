@@ -14,6 +14,9 @@ module Lit
     field :is_changed, type: Mongoid::Boolean,  default: false
 
 
+    index({ locale_id: 1 }, {  name: "localization_locale_id_index" })
+    index({ localization_key_id: 1 }, {  name: "localization_localization_key_id_index" })
+
 
     ## SCOPES
     scope :changed, proc { where(is_changed: true) }
@@ -27,7 +30,7 @@ module Lit
     belongs_to :locale, class_name: '::Lit::Locale'
     belongs_to :localization_key, touch: true, class_name: '::Lit::LocalizationKey'
     has_many :localization_versions, dependent: :destroy, class_name: '::Lit::LocalizationVersion'
-    has_many :versions, class_name: '::Lit::LocalizationVersion'
+#    has_many :versions, class_name: '::Lit::LocalizationVersion'
 
     ## VALIDATIONS
     validates :locale_id,
@@ -92,8 +95,10 @@ module Lit
 
     def create_version
       if translated_value.present?
-        l = localization_versions.new
+        #l = localization_versions.new
+        l=Lit::LocalizationVersion.create(:localization_id=>_id)
         l.translated_value = translated_value_was || default_value
+        l.save!
       end
     end
   end

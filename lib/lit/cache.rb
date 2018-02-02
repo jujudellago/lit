@@ -48,6 +48,13 @@ module Lit
     def keys
       localizations.keys
     end
+    
+    def hello
+      "hello"
+      
+    end
+
+
 
     def update_locale(key, value, force_array = false)
       key = key.to_s
@@ -127,9 +134,15 @@ module Lit
         localizations_scope = localizations_scope.where(locale_id: locale_ids) unless locale_ids.empty?
       end
       db_localizations = {}
-      localizations_scope.find_each do |l|
-        db_localizations[l.full_key] = l.get_value
-      end
+      #localizations_scope.find_each do |l|
+      #  db_localizations[l.full_key] = l.get_value
+      #end
+      localizations_scope.all.each do |l|
+         db_localizations[l.full_key] = l.get_value
+       end
+        
+      
+      
       keys = nested_string_keys_to_hash(db_localizations)
       keys.to_yaml
     end

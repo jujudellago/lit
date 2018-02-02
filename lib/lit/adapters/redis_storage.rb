@@ -2,12 +2,14 @@ require 'redis'
 module Lit
   extend self
   def redis
-    $redis = Redis.new(url: determine_redis_provider) unless $redis
+  #  $redis = Redis.new(url: determine_redis_provider) unless $redis
+    $redis = Redis.new(determine_redis_provider) unless $redis  
     $redis
   end
 
   def determine_redis_provider
-    ENV[ENV['REDIS_PROVIDER'] || 'REDIS_URL']
+    Lit.redis_hash
+    #ENV[ENV['REDIS_PROVIDER'] || 'REDIS_URL']
   end
 
   class RedisStorage

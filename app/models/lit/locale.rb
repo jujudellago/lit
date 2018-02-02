@@ -42,11 +42,11 @@ module Lit
     end
 
     def get_changed_localizations_count
-      localizations.changed.count(:id)
+      localizations.changed.count
     end
 
     def get_all_localizations_count
-      localizations.count(:id)
+      localizations.count
     end
 
     private

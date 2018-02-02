@@ -8,6 +8,7 @@ module Lit
     field :localization_id, type: Integer
     field :translated_value, type: String
 
+    index({ localization_id: 1 }, {  name: "localization_version_id_index" })
     
     
  #   serialize :translated_value

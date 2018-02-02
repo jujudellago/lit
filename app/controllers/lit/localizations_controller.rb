@@ -18,7 +18,7 @@ module Lit
     end
 
     def previous_versions
-      @versions = @localization.versions.order('created_at DESC')
+      @versions = @localization.localization_versions.order('created_at DESC')
       respond_to :js
     end
 
