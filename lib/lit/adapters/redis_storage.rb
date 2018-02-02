@@ -2,14 +2,13 @@ require 'redis'
 module Lit
   extend self
   def redis
-  #  $redis = Redis.new(url: determine_redis_provider) unless $redis
-    $redis = Redis.new(determine_redis_provider) unless $redis  
+    $redis ||= nil
+    $redis = Redis.new(url: determine_redis_provider) unless $redis
     $redis
   end
 
   def determine_redis_provider
-    Lit.redis_hash
-    #ENV[ENV['REDIS_PROVIDER'] || 'REDIS_URL']
+    ENV[ENV['REDIS_PROVIDER'] || 'REDIS_URL']
   end
 
   class RedisStorage
@@ -49,7 +48,7 @@ module Lit
     end
 
     def clear
-      Lit.redis.del(keys) if keys.length > 0
+      Lit.redis.del(keys) unless keys.empty?
     end
 
     def keys
@@ -59,6 +58,7 @@ module Lit
     def has_key?(key)
       Lit.redis.exists(_prefixed_key(key))
     end
+    alias key? has_key?
 
     def incr(key)
       Lit.redis.incr(_prefixed_key(key))
@@ -70,12 +70,16 @@ module Lit
       end
     end
 
+    def prefix
+      _prefix
+    end
+
     private
 
     def _prefix
       prefix = 'lit:'
-      if Lit.storage_options.is_a?(Hash)
-        prefix += "#{Lit.storage_options[:prefix]}:" if Lit.storage_options.key?(:prefix)
+      if Lit.storage_options.is_a?(Hash) && Lit.storage_options.key?(:prefix)
+        prefix += "#{Lit.storage_options[:prefix]}:"
       end
       prefix
     end

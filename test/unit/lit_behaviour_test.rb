@@ -12,6 +12,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
     @old_load_path = I18n.load_path
     @old_humanize_key = Lit.humanize_key
     @old_backend = I18n.backend
+    @old_ignore = Lit.ignore_yaml_on_startup
 
     I18n.load_path = []
     Lit.humanize_key = false
@@ -23,6 +24,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
     Lit.humanize_key = @old_humanize_key
     I18n.backend = @old_backend
     I18n.load_path = @old_load_path
+    Lit.ignore_yaml_on_startup = @old_ignore
     super
   end
 
@@ -40,7 +42,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
     end
   end
 
-  test 'should not save in other languages then I18n.available_locales' do
+  test 'should not save in other languages than I18n.available_locales' do
     ::Rails.configuration.i18n.stubs(:available_locales).returns([:fr])
     I18n.backend.expects(:store_item).times(0)
     I18n.backend.store_translations(:dk, foo: 'foo')
@@ -72,7 +74,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
   test 'translating the same not existing key twice should not set Lit::Localizaiton#is_changed to true' do
     key = 'not_existing_translation'
 
-    assert_equal nil, find_localization_for(key, 'en')
+    assert_nil find_localization_for(key, 'en')
 
     assert_equal "translation missing: en.#{key}", I18n.t(key)
     assert_equal false, find_localization_for(key, 'en').is_changed?
@@ -100,14 +102,14 @@ class LitBehaviourTest < ActiveSupport::TestCase
   end
 
   test 'it stores translations upon first invokation' do
-    key = 'test.of.storge'
+    key = 'test.of.storage'
     I18n.t(key)
     assert Lit::LocalizationKey.where(localization_key: key).exists?
   end
 
   test 'it wont store key if prefix is added to ignored' do
     old_loader = Lit.loader
-    key = 'test.of.storge'
+    key = 'test.of.storage'
     existing_key = 'existing.string'
     Lit.ignored_keys = ['test.of']
     Lit.loader = nil
@@ -121,7 +123,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
 
   test 'it wont store key if ignored_key prefix is a string' do
     old_loader = Lit.loader
-    first_key = 'test.of.storge'
+    first_key = 'test.of.storage'
     second_key = 'secondary.key.to.test'
     existing_key = 'existing.string'
     Lit.ignored_keys = 'test.of, secondary.key '
@@ -133,6 +135,75 @@ class LitBehaviourTest < ActiveSupport::TestCase
     assert !Lit::LocalizationKey.where(localization_key: first_key).exists?
     assert !Lit::LocalizationKey.where(localization_key: second_key).exists?
     assert Lit::LocalizationKey.where(localization_key: existing_key).exists?
+    Lit.loader = old_loader
+  end
+
+  test 'it wont overwrite existing UI-changed values with those from yaml' do
+    load_sample_yml('en.yml')
+    old_loader = Lit.loader
+    Lit.loader = nil
+    Lit.init
+
+    # Defaults from yml: en.foo: bar, en.nil_thing: [nothing]
+    assert_equal 'bar', I18n.t('foo')
+    assert_equal 'no longer nil', I18n.t('nil_thing', default: 'no longer nil')
+
+    foo_loc = Lit::LocalizationKey.find_by_localization_key('foo').localizations.first
+    nil_loc = Lit::LocalizationKey.find_by_localization_key('nil_thing').localizations.first
+
+    # Check if default values have been loaded into DB
+    assert_equal 'bar', foo_loc.default_value
+    assert_equal 'no longer nil', nil_loc.default_value
+
+    # Translate as if it was done in UI (is_changed set to true)
+    foo_loc.update(translated_value: 'barbar', is_changed: true)
+    nil_loc.update(translated_value: 'new one', is_changed: true)
+    [foo_loc, nil_loc].each do |loc|
+      Lit.init.cache.update_cache loc.full_key, loc.get_value
+    end
+
+    # Translations should be changed as intended
+    assert_equal 'barbar', I18n.t('foo')
+    assert_equal 'new one', I18n.t('nil_thing')
+
+    # Reload Lit, UI-changed translations should be intact
+    Lit.loader = nil
+    Lit.init
+    assert_equal 'barbar', I18n.t('foo')
+    assert_equal 'new one', I18n.t('nil_thing')
+
+    Lit.loader = old_loader
+  end
+
+  test 'it will overwrite existing values with those from yaml for unchanged localizations' do
+    Lit.ignore_yaml_on_startup = false
+    load_sample_yml('en.yml')
+    old_loader = Lit.loader
+    Lit.loader = nil
+    Lit.init
+
+    # Defaults from en.yml: en.foo: bar, en.nil_thing: [nothing]
+    assert_equal 'bar', I18n.t('foo')
+    assert_equal 'no longer nil', I18n.t('nil_thing', default: 'no longer nil')
+
+    foo_loc = Lit::LocalizationKey.find_by_localization_key('foo')
+                                  .localizations.first
+    nil_loc = Lit::LocalizationKey.find_by_localization_key('nil_thing')
+                                  .localizations.first
+
+    # Check if default values have been loaded into DB
+    assert_equal 'bar', foo_loc.default_value
+    assert_equal 'no longer nil', nil_loc.default_value
+
+    # Defaults from en_changed.yml en.foo: barbar, en.nil_thing: not nil anymore
+    # Swap yml file and reload Lit, changes in yml file should be visible
+    I18n.load_path = []
+    load_sample_yml('en_changed.yml')
+    Lit.loader = nil
+    Lit.init
+    assert_equal 'barbar', I18n.t('foo')
+    assert_equal 'not nil anymore', I18n.t('nil_thing')
+
     Lit.loader = old_loader
   end
 

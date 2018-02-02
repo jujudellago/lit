@@ -7,12 +7,25 @@ Dummy::Application.configure do
   # and recreated between test runs. Don't rely on the data there!
   config.cache_classes = true
 
-  # Configure static asset server for tests with Cache-Control for performance
-  config.serve_static_assets = true
-  config.static_cache_control = 'public, max-age=3600'
+  config.eager_load = false
 
-  # Log error messages when you accidentally call methods on nil
-  config.whiny_nils = true
+  # Configure static asset server for tests with Cache-Control for performance
+  if config.respond_to?(:public_file_server)
+    config.public_file_server.enabled = true
+    config.public_file_server.headers = { 'Cache-Control' => 'public, max-age=3600' }
+  else
+    if config.respond_to?(:serve_static_files)
+      config.serve_static_files = true
+    else
+      config.serve_static_assets = true
+    end
+    config.static_cache_control = 'public, max-age=3600'
+  end
+
+  if ::Rails::VERSION::MAJOR < 4
+    # Log error messages when you accidentally call methods on nil
+    config.whiny_nils = true
+  end
 
   # Show full error reports and disable caching
   config.consider_all_requests_local       = true
@@ -42,5 +55,7 @@ Dummy::Application.configure do
   # See everything in the log (default is :info)
   config.log_level = :debug
 
-  # config.i18n.fallbacks = true
+  config.i18n.fallbacks = false
+
+  config.active_support.test_order = :sorted
 end

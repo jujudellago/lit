@@ -2,33 +2,27 @@ namespace :lit do
   desc 'Exports translated strings from lit to config/locales/lit.yml file.'
   task export: :environment do
     if yml = Lit.init.cache.export
-      PATH = 'config/locales/lit.yml'
-      File.new("#{Rails.root}/#{PATH}", 'w').write(yml)
-      puts "Successfully exported #{PATH}."
+      path = Rails.root.join('config', 'locales', 'lit.yml')
+      File.new(path, 'w').write(yml)
+      puts "Successfully exported #{path}."
     end
   end
-  desc "import existing translations in lit"
-  task import: :environment do
-    I18n.available_locales.each do |locale|
-      loc=Lit::Locale.where(:locale => locale).pluck(:id)
-      
-      I18n.locale=locale
-      Lit::LocalizationKey.each do |lk|
-        key=lk.localization_key
-        translated_value=I18n.t(key)
-        unless translated_value.nil?
-          localization=Lit::Localization.where({'$and': [{:locale_id.in=>loc},{:localization_key_id=>lk.id}]}).first
-          if localization && localization.translated_value.blank? && translated_value.match(/^(translation missing)+/).nil?
-            #localization.update_attribute(:translated_value,translated_value)
-            puts "locale: #{locale}, will update key: #{key} with value:#{translated_value}"
-          end
-            
-          
-        end        
+
+  desc 'Reads config/locales/#{ENV["FILES"]} files and calls I18n.t() on keys forcing Lit to import given LOCALE to cache / to display them in UI'
+  task raw_import: :environment do
+    return 'you need to define FILES env' if ENV['FILES'].blank?
+    return 'you need to define LOCALE env' if ENV['LOCALE'].blank?
+    files = ENV['FILES'].to_s.split(',')
+    locale = ENV['LOCALE'].to_s
+    I18n.with_locale(locale) do
+      files.each do |file|
+        locale_file = File.open(Rails.root.join('config', 'locales', file))
+        yml = YAML.load(locale_file)[locale]
+        Hash[*Lit::Cache.flatten_hash(yml)].each do |key, default_translation|
+          puts key
+          I18n.t(key, default: default_translation)
+        end
       end
-      
-      
     end
-    
   end
 end

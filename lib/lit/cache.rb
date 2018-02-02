@@ -20,13 +20,18 @@ module Lit
   class Cache
     def initialize
       @hits_counter = Lit.get_key_value_engine
+      @request_info_store = Lit.get_key_value_engine
       @hits_counter_working = true
+      @keys = nil
     end
 
     def [](key)
+      key_without_locale = split_key(key).last
       update_hits_count(key)
-      ret = localizations[key]
-      ret
+      store_request_info(key_without_locale)
+      localization = localizations[key]
+      update_request_keys(key_without_locale, localization)
+      localization
     end
 
     def []=(key, value)
@@ -46,21 +51,20 @@ module Lit
     end
 
     def keys
-      localizations.keys
+      return @keys if @keys.present?
+      @keys = localizations.keys
+      return @keys if localizations.prefix.nil?
+      @keys = @keys.map do |k|
+        k.gsub(/^#{localizations.prefix}/, '')
+      end
     end
-    
-    def hello
-      "hello"
-      
-    end
 
-
-
-    def update_locale(key, value, force_array = false)
+    def update_locale(key, value, force_array = false, startup_process = false)
       key = key.to_s
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
-      localization = find_localization(locale, key_without_locale, value, force_array, true)
+      localization = find_localization(locale, key_without_locale, value: value, force_array: force_array, update_value: true)
+      return localization.get_value if startup_process && localization.is_changed?
       localizations[key] = localization.get_value if localization
     end
 
@@ -71,19 +75,18 @@ module Lit
 
     def delete_locale(key)
       key = key.to_s
+      keys.delete(key)
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
       delete_localization(locale, key_without_locale)
     end
 
     def load_all_translations
-      first = Localization.order('id ASC').first
-      last = Localization.order('id DESC').first
-      if !first || !last || (!localizations.has_key?(first.full_key) ||
+      first = Localization.order(id: :asc).first
+      last = Localization.order(id: :desc).first
+      if !first || (!localizations.has_key?(first.full_key) ||
         !localizations.has_key?(last.full_key))
-
-       # Localization.includes([:locale, :localization_key]).find_each do |l|
-       Localization.includes([:locale, :localization_key]).all.each do |l|       
+        Localization.includes([:locale, :localization_key]).find_each do |l|
           localizations[l.full_key] = l.get_value
         end
       end
@@ -93,7 +96,7 @@ module Lit
       key = key.to_s
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
-      localization = find_localization(locale, key_without_locale)
+      localization = find_localization(locale, key_without_locale, default_fallback: true)
       localizations[key] = localization.get_value if localization
     end
 
@@ -111,13 +114,12 @@ module Lit
       localization_keys.clear
       load_all_translations
     end
-
     alias_method :clear, :reset
 
     def find_locale(locale_key)
       locale_key = locale_key.to_s
       @locale_cache ||= {}
-      unless @locale_cache.has_key?(locale_key)
+      unless @locale_cache.key?(locale_key)
         locale = Lit::Locale.where(locale: locale_key).first_or_create!
         @locale_cache[locale_key] = locale
       end
@@ -134,17 +136,11 @@ module Lit
         localizations_scope = localizations_scope.where(locale_id: locale_ids) unless locale_ids.empty?
       end
       db_localizations = {}
-      #localizations_scope.find_each do |l|
-      #  db_localizations[l.full_key] = l.get_value
-      #end
-      localizations_scope.all.each do |l|
-         db_localizations[l.full_key] = l.get_value
-       end
-        
-      
-      
-      keys = nested_string_keys_to_hash(db_localizations)
-      keys.to_yaml
+      localizations_scope.find_each do |l|
+        db_localizations[l.full_key] = l.get_value
+      end
+      exported_keys = nested_string_keys_to_hash(db_localizations)
+      exported_keys.to_yaml
     end
 
     def nested_string_keys_to_hash(db_localizations)
@@ -155,13 +151,13 @@ module Lit
         end
         next o
       end
-      keys = {}
+      nested_keys = {}
       db_localizations.sort.each do |k, v|
         key_parts = k.to_s.split('.')
         converted = key_parts.reverse.reduce(v) { |a, n| { n => a } }
-        keys.merge!(converted, &deep_proc)
+        nested_keys.merge!(converted, &deep_proc)
       end
-      keys
+      nested_keys
     end
 
     def get_global_hits_counter(key)
@@ -190,64 +186,66 @@ module Lit
       @localization_keys ||= Lit.get_key_value_engine
     end
 
-    def find_localization(locale, key_without_locale, value = nil, force_array = false, update_value = false)
-      unless value.is_a?(Hash)
-#        ActiveRecord::Base.transaction do
-          localization_key = find_localization_key(key_without_locale)
-          localization = Lit::Localization.where(locale_id: locale.id).
-                            where(localization_key_id: localization_key.id).first_or_initialize
-          if update_value || localization.new_record?
-            if value.is_a?(Array)
-              unless force_array
-                new_value = nil
-                value_clone = value.dup
-                while (v = value_clone.shift) && v.present?
-                  pv = parse_value(v, locale)
-                  new_value = pv unless pv.nil?
-                end
-                value = new_value
-              end
-            else
-              value = parse_value(value, locale) unless value.nil?
+    def find_localization(locale, key_without_locale, value: nil, force_array: false, update_value: false, default_fallback: false)
+      return nil if value.is_a?(Hash)
+      ActiveRecord::Base.transaction do
+        localization_key = find_localization_key(key_without_locale)
+        localization = Lit::Localization.where(locale_id: locale.id). \
+                          where(localization_key_id: localization_key.id).first_or_initialize
+        if update_value || localization.new_record?
+          if value.is_a?(Array)
+            value = parse_array_value(value) unless force_array
+          elsif !value.nil?
+            value = parse_value(value, locale)
+          else
+            if ::Rails.application.config.i18n.fallbacks
+              value = fallback_localization(locale, key_without_locale)
+            elsif default_fallback
+              value = fallback_to_default(localization_key, localization)
             end
-            if value.nil?
-              if Lit.fallback
-                @locale_cache.keys.each do |lc|
-                  if lc != locale.locale
-                    nk = "#{lc}.#{key_without_locale}"
-                    v = localizations[nk]
-                    value = v if v.present? && value.nil?
-                  end
-                end
-              end
-              if value.nil? && Lit.humanize_key
-                value = key_without_locale.split('.').last.humanize
-              end
-            end
-            localization.update_default_value(value)
           end
-          return localization
-
-     #   end
-      else
-        nil
+          localization.update_default_value(value)
+        end
+        return localization
       end
+      nil
+    end
+
+    # fallback to translation in different locale
+    def fallback_localization(locale, key_without_locale)
+      value = nil
+      return nil unless fallbacks = ::Rails.application.config.i18n.fallbacks
+      keys = fallbacks == true ? @locale_cache.keys : fallbacks
+      keys.map(&:to_s).each do |lc|
+        if lc != locale.locale && value.nil?
+          nk = "#{lc}.#{key_without_locale}"
+          v = localizations[nk]
+          value = v if v.present? && value.nil?
+        end
+      end
+      value
+    end
+
+    # tries to get `default_value` from localization_key - checks other
+    # localizations
+    def fallback_to_default(localization_key, localization)
+      localization_key.localizations.where.not(default_value: nil). \
+        where.not(id: localization.id).first&.default_value
     end
 
     def find_localization_for_delete(locale, key_without_locale)
       localization_key = find_localization_key_for_delete(key_without_locale)
       return nil unless localization_key
-      Lit::Localization.where(locale_id: locale.id).
-          where(localization_key_id: localization_key.id).first
+      Lit::Localization.find_by(locale_id: locale.id,
+                                localization_key_id: localization_key.id)
     end
 
     def delete_localization(locale, key_without_locale)
       localization = find_localization_for_delete(locale, key_without_locale)
-      if localization
-        localizations.delete("#{locale.locale}.#{key_without_locale}")
-        localization_keys.delete(key_without_locale)
-        localization.destroy # or localization.default_value = nil; localization.save!
-      end
+      return unless localization
+      localizations.delete("#{locale.locale}.#{key_without_locale}")
+      localization_keys.delete(key_without_locale)
+      localization.destroy # or localization.default_value = nil; localization.save!
     end
 
     ## checks parameter type and returns value basing on it
@@ -277,20 +275,26 @@ module Lit
       new_value
     end
 
+    def parse_array_value(value)
+      new_value = nil
+      value_clone = value.dup
+      while (v = value_clone.shift) && v.present?
+        pv = parse_value(v, locale)
+        new_value = pv unless pv.nil?
+      end
+      new_value
+    end
+
     def find_localization_key(key_without_locale)
-      unless localization_keys.has_key?(key_without_locale)
+      unless localization_keys.key?(key_without_locale)
         find_or_create_localization_key(key_without_locale)
       else
-        #Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) || find_or_create_localization_key(key_without_locale)
-        Lit::LocalizationKey.where(id: localization_keys[key_without_locale]).first || find_or_create_localization_key(key_without_locale)
+        Lit::LocalizationKey.find_by(id: localization_keys[key_without_locale]) || find_or_create_localization_key(key_without_locale)
       end
     end
 
     def find_localization_key_for_delete(key_without_locale)
-      if localization_keys.has_key?(key_without_locale)
-        #lk = Lit::LocalizationKey.find_by_id(localization_keys[key_without_locale]) 
-        lk = Lit::LocalizationKey.where(id: localization_keys[key_without_locale]).first
-      end
+      lk = Lit::LocalizationKey.find_by(id: localization_keys[key_without_locale]) if localization_keys.has_key?(key_without_locale)
       lk || Lit::LocalizationKey.where(localization_key: key_without_locale).first
     end
 
@@ -305,14 +309,48 @@ module Lit
     end
 
     def update_hits_count(key)
-      if @hits_counter_working
-        key_without_locale = split_key(key).last
-        @hits_counter.incr('hits_counter.' + key)
-        @hits_counter.incr('global_hits_counter.' + key_without_locale)
-      end
+      return unless @hits_counter_working
+      key_without_locale = split_key(key).last
+      @hits_counter.incr('hits_counter.' + key)
+      @hits_counter.incr('global_hits_counter.' + key_without_locale)
     end
+
+    def store_request_info(key_without_locale)
+      return unless Lit.store_request_info
+      return unless Thread.current[:lit_current_request_path].present?
+      info = get_request_info(key_without_locale)
+      parts = info.split(' ').push(Thread.current[:lit_current_request_path]).uniq
+      parts.shift if parts.count > 10
+      @request_info_store['request_info.' + key_without_locale] = parts.join ' '
+    end
+
+    def update_request_keys(key_without_locale, localization)
+      return if Thread.current[:lit_request_keys].nil?
+      Thread.current[:lit_request_keys] ||= {}
+      Thread.current[:lit_request_keys][key_without_locale] = localization
+    end
+
+    def request_keys
+      Thread.current[:lit_request_keys] || {}
+    end
+    public :request_keys
+
+    def get_request_info(key_without_locale)
+      @request_info_store['request_info.' + key_without_locale].to_s
+    end
+    public :get_request_info
+
     def self.split_key(key)
       key.split('.', 2)
+    end
+
+    def self.flatten_hash(hash_to_flatten, parent = [])
+      hash_to_flatten.flat_map do |key, value|
+        case value
+        when Hash then flatten_hash(value, parent + [key])
+        else [(parent + [key]).join('.'), value]
+        end
+      end
     end
   end
 end

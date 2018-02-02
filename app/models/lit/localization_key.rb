@@ -1,17 +1,6 @@
 module Lit
-  class LocalizationKey
-    include Mongoid::Document
-    include Mongoid::Timestamps
-    
+  class LocalizationKey < ActiveRecord::Base
     attr_accessor :interpolated_key
-
-    field :localization_key, type: String
-    field :is_completed, type: Mongoid::Boolean,  default: false
-    field :is_starred, type: Mongoid::Boolean,  default: false
-
-
-    index({ localization_key: 1 }, {  name: "localization_key_index" })
-    
 
     ## SCOPES
     scope :completed, proc { where(is_completed: true) }
@@ -23,10 +12,9 @@ module Lit
         .where('lit_localization_keys.updated_at >= ?', dt)
         .where('lit_localizations.is_changed = true')
     }
-    
 
     ## ASSOCIATIONS
-    has_many :localizations, dependent: :destroy, class_name: '::Lit::Localization'
+    has_many :localizations, dependent: :destroy
 
     ## VALIDATIONS
     validates :localization_key,
@@ -56,8 +44,7 @@ module Lit
     end
 
     def mark_completed
-     # self.is_completed = localizations.all.changed.count(:id) == localizations.all.count
-     self.is_completed = localizations.all.changed.count == localizations.all.count
+      self.is_completed = localizations.changed.count(:id) == localizations.count
     end
 
     def mark_completed!
@@ -78,97 +65,8 @@ module Lit
       {}
     end
 
-    def self.search(options={})
-        options = options.reverse_merge(default_search_options)
-        s = self #.includes(:localizations)
-        queries=[]
-        Lit.ignored_keys.each do |ik|
-          #regex=/^#{ik}./
-          
-          regex=/^(?!#{ik})+/
-          queries<<{:localization_key => regex}
-        end
-        
-        if options[:loc].present?
-          loc=Lit::Locale.where(:locale => options[:loc]).pluck(:id)
-       #   existing_ids=Lit::Localization.where({:locale_id.in=>loc}).pluck(:localization_key_id)
-          existing_ids=Lit::Localization.where({'$and': [{:locale_id.in=>loc},{:translated_value.nin => [nil,""]}]}).collect(&:localization_key_id)
-#          all_ids=Lit::Localization.where({:locale_id.in=>locale}).pluck(:localization_key_id)
-           # all_ids=Lit::Localization.where({:locale_id.in=>['en']}).pluck(:localization_key_id)
-          
-          all_keys=Lit.init.cache.keys
-          existing_keys=[]
-          all_keys.each do |k|
-            regex=/^(lit:#{options[:loc]}.)+/
-            if k.match(regex)
-              existing_keys<<k.gsub(regex,"")
-            end
-          end
-          queries<<{:localization_key.nin => existing_keys}
-            
-
-
-
-
-
-         # s = s.where()
-         # queries<<{:'localization_key.id'.nin => existing_ids}
-          
-        end        
-        
-        if  options[:key].present? && options[:key_prefix].present?
-            regex1=/#{options[:key]}$/
-            
-
-            
-            regex2=/^#{options[:key_prefix]}./
-            
-
-            #regex1=/login$/
-            #regex2=/^profile/
-            
-        #    s.where({"localization_key": regex1}).and({"localization_key": regex2})
-            
-            
-            #Lit::LocalizationKey.in([{"localization_key": regex2},{"localization_key": regex1}])
-#           s = s.where({'$and': [{localization_key: regex1}, {localization_key: regex2}]})
-           
-           queries<<{localization_key: regex1}
-           queries<<{localization_key: regex2}
-           
-           #Lit::LocalizationKey.where({'$and': [{localization_key: regex1}, {localization_key: regex2}]})
-           
-            
-        else
-        
-         if options[:key].present?
-           regex3=/#{options[:key]}$/
-           #s=s.where({"localization_key": regex3})
-           queries<<{"localization_key": regex3}
-         end  
-         if options[:key_prefix].present?
-           regex4=/^#{options[:key_prefix]}./           
-          #   s=s.where({"localization_key": regex4})
-           queries<<{"localization_key": regex4}
-         end
-       end
-      # if options[:order] && order_options.include?(options[:order])
-      #   column, order = options[:order].split(' ')
-      #   s = s.order("#{column} #{order.upcase}")
-      # else
-      #   s = s.ordered
-      # end
-      # unless options[:include_completed].to_i == 1
-      #    s = s.not_completed
-      #  end
-        s = s.where({'$and': queries})
-      
-         s
-    end
-
-
-    def self.old_search(options = {})
-      options = options.reverse_merge(default_search_options)
+    def self.search(options = {})
+      options = options.to_h.reverse_merge(default_search_options).with_indifferent_access
       s = self
       if options[:order] && order_options.include?(options[:order])
         column, order = options[:order].split(' ')

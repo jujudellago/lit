@@ -1,11 +1,35 @@
-appraise "rails-3" do
-  gem "rails", "3.2.14"
+appraise 'rails-4.2' do
+  source 'https://rubygems.org'
+  gem 'rails', '4.2.10'
+  gem 'devise'
+  gem 'pg'
+  gem 'redis'
+  gem 'capybara'
+  gem 'database_cleaner'
+  gem 'test_declarative'
+  gem 'mocha'
+  gem 'webmock'
+  gem 'sass-rails', '~> 4.0.0'
+  gem 'jquery-rails'
+  gem 'coffee-rails'
+  gem 'pry-rails'
 end
 
-appraise "rails-4" do
-  gem "rails", "4.0.0"
-end
-
-appraise "rails-4.1" do
-  gem "rails", "4.1.0"
+appraise 'rails-5' do
+  source 'https://rubygems.org'
+  gem 'rails', '5.0.6'
+  gem 'devise'
+  gem 'pg'
+  gem 'redis'
+  gem 'capybara'
+  gem 'database_cleaner'
+  gem 'test_declarative'
+  gem 'mocha'
+  gem 'webmock'
+  gem 'sass-rails', '~> 5.0.0'
+  gem 'jquery-rails'
+  gem 'coffee-rails'
+  gem 'pry-rails'
+  gem 'rails-controller-testing'
+  gem 'minitest', '~> 5.10'
 end

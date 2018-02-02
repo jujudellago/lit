@@ -3,13 +3,13 @@ require 'test_helper'
 
 class WelcomeTest < ActionDispatch::IntegrationTest
   def setup
-    @old_fallback = Lit.fallback
     @old_humanize_key = Lit.humanize_key
+    @old_fallbacks = Rails.application.config.i18n.fallbacks
   end
 
   def teardown
-    Lit.fallback = @old_fallback
     Lit.humanize_key = @old_humanize_key
+    Rails.application.config.i18n.fallbacks = @old_fallbacks
   end
 
   test "should properly display 'Hello world' in english" do
@@ -19,7 +19,6 @@ class WelcomeTest < ActionDispatch::IntegrationTest
 
   test 'should properly display text without default and humanize=false' do
     Lit.humanize_key = false
-    Lit.fallback = false
     visit('/en/welcome')
     assert page.has_content?('Text Without Default')
     visit('/pl/welcome')
@@ -28,7 +27,6 @@ class WelcomeTest < ActionDispatch::IntegrationTest
 
   test 'should properly display text without default and humanize=true' do
     Lit.humanize_key = true
-    Lit.fallback = false
     visit('/en/welcome')
     assert page.has_content?('Text without default')
     visit('/pl/welcome')
@@ -37,7 +35,6 @@ class WelcomeTest < ActionDispatch::IntegrationTest
 
   test 'should properly display text with default' do
     Lit.humanize_key = false
-    Lit.fallback = false
     visit('/en/welcome')
     assert page.has_content?('Default content')
     visit('/pl/welcome')
@@ -50,8 +47,8 @@ class WelcomeTest < ActionDispatch::IntegrationTest
   end
 
   test 'should use interpolation instead of default value' do
+    Rails.application.config.i18n.fallbacks = false
     Lit.humanize_key = false
-    Lit.fallback = false
     visit('/pl/welcome')
     assert page.has_content?('Abrakadabra dwa kije')
     visit('/en/welcome')
@@ -84,7 +81,7 @@ class WelcomeTest < ActionDispatch::IntegrationTest
 
   test 'should not fallback if not asked to' do
     Lit.humanize_key = false
-    Lit.fallback = false
+    Rails.application.config.i18n.fallbacks = false
     visit('/en/welcome')
     assert page.has_content?('English translation')
     visit('/pl/welcome')
@@ -92,10 +89,17 @@ class WelcomeTest < ActionDispatch::IntegrationTest
   end
 
   test 'should properly fallback' do
-    Lit.fallback = true
+    Rails.application.config.i18n.fallbacks = [:en]
     visit('/en/welcome')
     assert page.has_content?('English translation')
     visit('/pl/welcome')
     assert page.has_content?('English translation')
+  end
+
+  test 'shoud properly save default value' do
+    assert !Lit::Localization.where(default_value: 'Simple test with default value').exists?
+    visit('/en/welcome')
+    assert page.has_content?('Simple test with default value')
+    assert Lit::Localization.where(default_value: 'Simple test with default value').exists?
   end
 end

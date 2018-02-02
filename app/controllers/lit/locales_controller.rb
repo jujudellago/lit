@@ -3,11 +3,8 @@ require_dependency 'lit/application_controller'
 module Lit
   class LocalesController < ApplicationController
     def index
-      @locales = Locale.ordered.all
-      @enabled_locales=Locale.visible.all
-      @lit_locales=Lit::Locale.all.map{|l| l.locale}
-      @system_locales=I18n.available_locales.map{|l| l.to_s}
-      
+      @locales = Locale.ordered
+
       respond_to do |format|
         format.html # index.html.erb
         format.json { render json: @locales }

@@ -1,16 +1,6 @@
 require 'net/http'
 module Lit
-  class Source
-    include Mongoid::Document
-    include Mongoid::Timestamps
-    
-    
-    field :identifier, type: String
-    field :url, type: String
-    field :api_key, type: String
-    field :last_updated_at, type: DateTime
-    
-    
+  class Source < ActiveRecord::Base
     LOCALES_PATH = '/api/v1/locales.json'
     LOCALIZATION_KEYS_PATH = '/api/v1/localization_keys.json'
     LOCALIZATIONS_PATH = '/api/v1/localizations.json'
@@ -100,8 +90,8 @@ module Lit
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = (uri.port == 443)
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        res = http.start do |http|
-          http.request(req)
+        res = http.start do |http_started|
+          http_started.request(req)
         end
         if res.is_a?(Net::HTTPSuccess)
           result = JSON.parse(res.body)

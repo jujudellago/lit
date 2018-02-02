@@ -1,22 +1,11 @@
 module Lit
-  class Locale 
-    include Mongoid::Document
-    include Mongoid::Timestamps
-  
+  class Locale < ActiveRecord::Base
     ## SCOPES
     scope :ordered, proc { order('locale ASC') }
     scope :visible, proc { where(is_hidden: false) }
 
-
-
-    field :locale, type: String
-    field :is_hidden, type: Mongoid::Boolean,  default: false
-  
-
-
-
     ## ASSOCIATIONS
-    has_many :localizations, dependent: :destroy, class_name: '::Lit::Localization'
+    has_many :localizations, dependent: :destroy
 
     ## VALIDATIONS
     validates :locale,
@@ -42,11 +31,11 @@ module Lit
     end
 
     def get_changed_localizations_count
-      localizations.changed.count
+      localizations.changed.count(:id)
     end
 
     def get_all_localizations_count
-      localizations.count
+      localizations.count(:id)
     end
 
     private

@@ -1,23 +1,20 @@
 <h1>Listing locales</h1>
 
-<table class="table table-stripped table-hover">
-<thead>
+<table class="table table-stripped">
   <tr>
     <th>Locale</th>
-	<th>in system locales ?</th>
     <th width="130">Options</th>
   </tr>
-</thead>
-<tbody>
+
 <% @locales.each do |locale| %>
-<%- kls=locale.is_hidden ? "danger" : "" -%>
-<tr class="<%= kls %>" id="locale_<%= locale.id %>">
-	<%= render :partial=>'locale', :locals=>{:locale=>locale} %>
- </tr>	
+  <tr>
+    <td><%= locale %></td>
+    <td>
+      <span id="hide_link_<%= locale.id %>"><%= render :partial=>"hide_link", :locals=>{:locale=>locale} %></span>
+      <%= link_to 'Destroy', locale, method: :delete, data: { confirm: 'Are you sure?' } %>
+    </td>
+  </tr>
 <% end %>
-</tbody>
 </table>
 
 
-<p><strong><%= @enabled_locales.count %></strong> enabled locales / <strong><%= @locales.count %></strong> total</p>
-<p><strong><%= I18n.available_locales.count %></strong> locales defined in app</p>

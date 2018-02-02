@@ -1,22 +1,7 @@
 module Lit
-  class Localization 
-    include Mongoid::Document
-    include Mongoid::Timestamps
-
-   # serialize :translated_value
-   # serialize :default_value
-
-
-    field :locale_id, type: Integer
-    field :localization_key_id, type: Integer
-    field :default_value, type: String
-    field :translated_value, type: String
-    field :is_changed, type: Mongoid::Boolean,  default: false
-
-
-    index({ locale_id: 1 }, {  name: "localization_locale_id_index" })
-    index({ localization_key_id: 1 }, {  name: "localization_localization_key_id_index" })
-
+  class Localization < ActiveRecord::Base
+    serialize :translated_value
+    serialize :default_value
 
     ## SCOPES
     scope :changed, proc { where(is_changed: true) }
@@ -27,10 +12,10 @@ module Lit
     }
 
     ## ASSOCIATIONS
-    belongs_to :locale, class_name: '::Lit::Locale'
-    belongs_to :localization_key, touch: true, class_name: '::Lit::LocalizationKey'
-    has_many :localization_versions, dependent: :destroy, class_name: '::Lit::LocalizationVersion'
-#    has_many :versions, class_name: '::Lit::LocalizationVersion'
+    belongs_to :locale
+    belongs_to :localization_key, touch: true
+    has_many :localization_versions, dependent: :destroy
+    has_many :versions, class_name: '::Lit::LocalizationVersion'
 
     ## VALIDATIONS
     validates :locale_id,
@@ -57,7 +42,7 @@ module Lit
     end
 
     def get_value
-      (is_changed? && (!translated_value.nil?)) ? translated_value : default_value
+      is_changed? && !translated_value.nil? ? translated_value : default_value
     end
 
     def value
@@ -78,8 +63,12 @@ module Lit
 
     def update_default_value(value)
       return true if persisted? && default_value == value
-      self.default_value = value
-      self.save!
+      if persisted?
+        update_column(:default_value, value)
+      else
+        self.default_value = value
+        save!
+      end
     end
 
     private
@@ -90,15 +79,15 @@ module Lit
     end
 
     def mark_localization_key_completed
-      localization_key.mark_completed! if @should_mark_localization_key_completed
+      return if !instance_variable_defined?(:@should_mark_localization_key_completed) || \
+                @should_mark_localization_key_completed
+      localization_key.mark_completed!
     end
 
     def create_version
       if translated_value.present?
-        #l = localization_versions.new
-        l=Lit::LocalizationVersion.create(:localization_id=>_id)
+        l = localization_versions.new
         l.translated_value = translated_value_was || default_value
-        l.save!
       end
     end
   end
