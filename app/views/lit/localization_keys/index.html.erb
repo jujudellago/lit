@@ -29,7 +29,11 @@
                   <%= render partial: 'localization_row', locals: {localization: Lit.init.cache["#{locale}.#{lk.localization_key}"]} %>
                 </td>
                 <td class="locale_row">
-                  <%= image_tag "lit/famfamfam_flags/#{locale[0,2]}.png" %>
+				  <%- if locale.match(/-/) -%>
+	                  <%= image_tag "lit/famfamfam_flags/#{locale[0,5]}.png" %>
+				  <%- else -%>
+                  	<%= image_tag "lit/famfamfam_flags/#{locale[0,2]}.png" %>
+					<%- end -%>
                   <%= locale %>
                   <% if localization %>
                     <%= link_to lit.previous_versions_localization_key_localization_path(lk, localization, format: :js), class: "show_prev_versions #{'hidden' unless has_versions?(localization)}", remote: true do %>
