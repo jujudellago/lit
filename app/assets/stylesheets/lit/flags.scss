@@ -1,0 +1,256 @@
+
+// Flags
+// --------------------------------------------------
+label .flag{
+	top:0;
+	padding-bottom: 22px;
+   position: relative;
+   top: 7px;
+   vertical-align: bottom;
+   width: 24px;
+}
+.flag {
+	display: inline-block;
+	width: 24px;
+	height: 24px;
+	position: relative;
+	top: 7px;
+	background-image: url(image-path("ui/flags-v2-2.png"));
+	background-repeat: no-repeat;
+}
+	.btn .flag,
+	.navbar-link .flag {						// buttons and navbar links with flags to match buttons without flags
+		margin-top: -8px;		// before -10px
+	}
+	.breadcrumb .flag {							// icons in breadcrumbs
+		margin-top: -10px;
+	}
+
+
+// Line #1
+
+.flag.ay {	// Not in use
+    background-position: 0 0;
+}
+.flag.ar {	// arabic
+    background-position: -24px 0;
+}
+.flag.bs {	//
+    background-position: -48px 0;
+}
+.flag.bg {	// Bulgary
+    background-position: -72px 0;
+}
+.flag.cs {	// Czech Republic (ISO CZ)
+    background-position: -96px 0;
+}
+.flag.ca {	// Canada !!! NO !!! Catalan !
+    background-position: -120px 0;
+}
+.flag.da {	// Denmark
+    background-position: -144px 0;
+}
+.flag.de {	// Germany
+    background-position: -168px 0;
+}
+.flag.en {	// Great Britain (ISO GB)
+    background-position: -192px 0;
+}
+.flag.es {	// Spain
+    background-position: -216px 0;
+}
+
+// Line #2
+
+.flag.et {	//
+    background-position: 0 -24px;
+}
+.flag.fa {	//
+    background-position: -24px -24px;
+}
+.flag.fi {	// Finland
+    background-position: -48px -24px;
+}
+.flag.fr {	// France
+    background-position: -72px -24px;
+}
+.flag.gr {	// Greece (old - not in use on the website)
+    background-position: -96px -24px;
+}
+.flag.el {	// Greece
+    background-position: -120px -24px;
+}
+.flag.he {	//
+    background-position: -144px -24px;
+}
+.flag.hr {	// Croatia
+    background-position: -168px -24px;
+}
+.flag.hu {	// Hungary
+    background-position: -192px -24px;
+}
+.flag.hy {	//
+    background-position: -216px -24px;
+}
+
+// Line #3
+
+.flag.id {	// Indonesia
+    background-position: 0 -48px;
+}
+.flag.is {	//
+    background-position: -24px -48px;
+}
+.flag.it {	// Italy
+    background-position: -48px -48px;
+}
+.flag.ja {	// Japan (ISO JP)
+    background-position: -72px -48px;
+}
+.flag.ka {	//
+    background-position: -96px -48px;
+}
+.flag.kk {	//
+    background-position: -120px -48px;
+}
+.flag.ko {	// South Korea /ISO KR)
+    background-position: -144px -48px;
+}
+.flag.lb {	//
+    background-position: -168px -48px;
+}
+.flag.lt {	// Lithuania
+    background-position: -192px -48px;
+}
+.flag.lv {	// Latvia
+    background-position: -216px -48px;
+}
+
+// Line #4
+
+.flag.mk {	//
+    background-position: 0 -72px;
+}
+.flag.nl {	// Netherlands
+    background-position: -24px -72px;
+}
+.flag.no {	// Norway
+    background-position: -48px -72px;
+}
+.flag.pt-BR,
+.flag.pb {	// Brazil (Portuguese) (ISO BR)
+    background-position: -72px -72px;
+}
+.flag.pl {	// Poland
+    background-position: -96px -72px;
+}
+.flag.pt-PT,
+.flag.pt {	// Portugal
+    background-position: -120px -72px;
+}
+.flag.ro {	// Romania
+    background-position: -144px -72px;
+}
+.flag.ru {	// Tussia
+    background-position: -168px -72px;
+}
+.flag.sk {	// Slovakia
+    background-position: -192px -72px;
+}
+.flag.sl {	// Slovenia (ISO SI)
+    background-position: -216px -72px;
+}
+
+// Line #5
+
+.flag.sq {	//
+    background-position: 0 -96px;
+}
+.flag.sr {	// Serbia
+    background-position: -24px -96px;
+}
+.flag.sv {	// Sweden
+    background-position: -48px -96px;
+}
+.flag.th {	// Thailand
+    background-position: -72px -96px;
+}
+.flag.tr {	// Turkey
+    background-position: -96px -96px;
+}
+.flag.uk {	// Ukraine (ISO UA)
+    background-position: -120px -96px;
+}
+.flag.vi {	// Vietnam (ISO VN)
+    background-position: -144px -96px;
+}
+.flag.zh-CN,
+.flag.zh {	// China
+    background-position: -168px -96px;
+}
+.flag.un {	// Unknown
+    background-position: -192px -96px;
+}
+.flag.gl {	// Galicia
+    background-position: -216px -96px;
+}
+
+// Line #6
+
+.flag.ms {	// Malaysia
+    background-position: 0 -120px;
+}
+.flag.oc {	// Occitania
+    background-position: -24px -120px;
+}
+.flag.eo {	// ?
+    background-position: -48px -120px;
+}
+.flag.si {	//
+    background-position: -72px -120px;
+}
+.flag.tl {	// Philippines
+    background-position: -96px -120px;
+}
+.flag.ur {	//
+    background-position: -120px -120px;
+}
+.flag.zh-TW {	// EMPTY - the same class stated 2 times
+    background-position: -144px -120px;
+}
+.flag.bn {	// Bangladesh
+    background-position: -168px -120px;
+}
+.flag.eu {	// Basque
+    background-position: -192px -120px;
+}
+.flag.br {	// Breton
+    background-position: -216px -120px;
+}
+
+// Line #7
+
+.flag.hi {	// India
+    background-position: 0 -144px;
+}
+.flag.km {	//
+    background-position: -24px -144px;
+}
+
+
+.flag.zt {	// Hong Kong
+    background-position: -48px -144px;
+}
+.flag.ze {	// Mandarin/English
+    background-position: -72px -144px;
+}
+
+.flag.at { // asturian
+   	background-position: -96px -144px;
+}
+
+.flag.uz { // Uzbek
+	background-position: -120px -144px;
+
+}
+

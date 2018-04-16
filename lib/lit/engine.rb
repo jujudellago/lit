@@ -14,6 +14,9 @@ module Lit
         app.config.i18n.available_locales.each do |l|
           app.config.assets.precompile << "lit/famfamfam_flags/#{l.to_s[0,2]}.png"
         end
+        ["pt-BR", "zh-TW", "zh-CN", "pt-PT"].each do |l|
+          app.config.assets.precompile << "lit/famfamfam_flags/#{l}.png"
+        end        
       end
     end
 
