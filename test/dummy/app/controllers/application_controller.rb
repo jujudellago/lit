@@ -1,5 +1,5 @@
 class ApplicationController < ActionController::Base
-  protect_from_forgery
+  protect_from_forgery with: :exception, prepend: true 
 
   unless respond_to?(:before_action)
     alias_method :before_action, :before_filter

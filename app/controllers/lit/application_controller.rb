@@ -4,6 +4,8 @@ module Lit
       alias_method :before_action, :before_filter
       alias_method :after_action, :after_filter
     end
+    protect_from_forgery with: :exception, prepend: true 
+    
     before_action :authenticate
     before_action :stop_hits_counter
     after_action :restore_hits_counter
