@@ -12,6 +12,10 @@ Lit.authentication_verification = <%= @authentication_verification || 'nil' %>
 # environment
 Lit.key_value_engine = '<%= @key_value_engine %>'
 
+# Redis URL to use when key_value_engine is 'redis'
+# When set to `nil`, it uses the REDIS_URL environment variable.
+# Lit.redis_url = 'redis://redis-server:6379/0'
+
 # Pass extra options to key_value_neinge, ie. prefix for redis (only one
 # supported at the moment)
 # Lit.storage_options = { prefix: "my_project" }
@@ -43,7 +47,7 @@ Lit.set_last_updated_at_upon_creation = true
 
 # Store request info - this will store in cache additional info about request
 # path that triggered translation key to be displayed / accessed
-# For more infor please check README.md
+# For more information please check the README.md
 Lit.store_request_info = false
 
 # Initialize lit
