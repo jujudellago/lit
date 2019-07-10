@@ -159,7 +159,7 @@ class LitBehaviourTest < ActiveSupport::TestCase
     foo_loc.update(translated_value: 'barbar', is_changed: true)
     nil_loc.update(translated_value: 'new one', is_changed: true)
     [foo_loc, nil_loc].each do |loc|
-      Lit.init.cache.update_cache loc.full_key, loc.get_value
+      Lit.init.cache.update_cache loc.full_key, loc.translation
     end
 
     # Translations should be changed as intended
@@ -205,6 +205,33 @@ class LitBehaviourTest < ActiveSupport::TestCase
     assert_equal 'not nil anymore', I18n.t('nil_thing')
 
     Lit.loader = old_loader
+  end
+
+  test 'it replaces nil ("translation missing") values with new defaults' do
+    assert_nil find_localization_for('foo', :en)
+    I18n.t('foo')
+    assert_not_nil find_localization_for('foo', :en)
+    I18n.t('foo', default: 'bar')
+    assert_equal 'bar', I18n.t('foo')
+  end
+
+  if Lit.key_value_engine == 'redis'
+    test 'it does not overwrite values in DB with nil if default option is removed from I18n.t call after value is deleted from redis' do
+      I18n.t('foo', default: 'bar')
+      assert_equal 'bar', find_localization_for('foo', :en).value
+      $redis.flushdb # rubocop:disable Style/GlobalVars
+      I18n.t('foo')
+      assert_equal 'bar', find_localization_for('foo', :en).value
+    end
+  end
+
+  test 'it does not create duplicate db records when a previously deleted key appears again' do
+    loc_count = Lit::Localization.count
+    I18n.t('foo', default: 'bar')
+    assert Lit::Localization.count == loc_count + 1
+    Lit::LocalizationKey.find_by(localization_key: 'foo').soft_destroy
+    I18n.t('foo', default: 'baz')
+    assert Lit::Localization.count == loc_count + 1
   end
 
   private

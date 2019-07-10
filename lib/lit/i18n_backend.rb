@@ -14,10 +14,13 @@ module Lit
       #reserved_keys = :lit_default_copy
       #reserved_keys = reserved_keys.merge(I18n.const_get :RESERVED_KEYS)
       
-      reserved_keys = I18n.const_get :RESERVED_KEYS
+#      reserved_keys = I18n.const_get :RESERVED_KEYS
       #reserved_keys << :lit_default_copy
+
+      reserved_keys = I18n.const_get(:RESERVED_KEYS) + %i[lit_default_copy]
+
       I18n.send(:remove_const, :RESERVED_KEYS)
-      I18n.const_set(:RESERVED_KEYS, reserved_keys)
+      I18n.const_set(:RESERVED_KEYS, reserved_keys.freeze)
     end
 
     def translate(locale, key, options = {})
@@ -63,7 +66,8 @@ module Lit
       return true if options[:default].is_a?(String)
       return true if options[:default].is_a?(Array) && \
                      (options[:default].first.is_a?(String) || \
-                      options[:default].first.is_a?(Symbol))
+                      options[:default].first.is_a?(Symbol) || \
+                      options[:default].first.is_a?(Array))
       false
     end
 
@@ -72,12 +76,11 @@ module Lit
 
       parts = I18n.normalize_keys(locale, key, scope, options[:separator])
       key_with_locale = parts.join('.')
-
       # check in cache or in simple backend
       content = @cache[key_with_locale] || super
       return content if parts.size <= 1
 
-      if content.nil? && should_cache?(key_with_locale)
+      if content.nil? && should_cache?(key_with_locale, options)
         new_content = @cache.init_key_with_value(key_with_locale, content)
         content = new_content if content.nil? # Content can change when Lit.humanize is true for example
         # so there is no content in cache - it might not be if ie. we're doing
@@ -111,7 +114,7 @@ module Lit
           # it anyway if we return nil, but then it will wrap it also in
           # translation_missing span.
           # Humanizing key should be last resort
-          if content.nil? && Lit.humanize_key
+          if content.nil? && Lit.humanize_key && key.match(Lit.humanize_key_ignored).nil?
             content = key.to_s.split('.').last.humanize
             if content.present?
               @cache[key_with_locale] = content
@@ -128,8 +131,8 @@ module Lit
       key = ([locale] + scope).join('.')
       if data.respond_to?(:to_hash)
         # ActiveRecord::Base.transaction do
-          data.to_hash.each do |key, value|
-            store_item(locale, value, scope + [key], startup_process)
+          data.to_hash.each do |k, value|
+            store_item(locale, value, scope + [k], startup_process)
           end
         # end
       elsif data.respond_to?(:to_str) || data.is_a?(Array)
@@ -184,8 +187,10 @@ module Lit
       Lit.ignored_keys.any?{ |k| key_without_locale.start_with?(k) }
     end
 
-    def should_cache?(key_with_locale)
-      return false if @cache.has_key?(key_with_locale)
+    def should_cache?(key_with_locale, options)
+      if @cache.has_key?(key_with_locale)
+        return false unless options[:default] && !options[:default].is_a?(Array)
+      end
 
       _, key_without_locale = ::Lit::Cache.split_key(key_with_locale)
       return false if is_ignored_key(key_without_locale)

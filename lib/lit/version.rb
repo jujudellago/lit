@@ -1,3 +1,3 @@
 module Lit
-  VERSION = '0.3.4'.freeze
+  VERSION = '1.0.5'.freeze
 end

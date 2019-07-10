@@ -23,6 +23,8 @@ module Lit
       @request_info_store = Lit.get_key_value_engine
       @hits_counter_working = true
       @keys = nil
+      @localization_object_cache = {}
+      @localization_key_object_cache = {}
     end
 
     def [](key)
@@ -64,8 +66,8 @@ module Lit
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
       localization = find_localization(locale, key_without_locale, value: value, force_array: force_array, update_value: true)
-      return localization.get_value if startup_process && localization.is_changed?
-      localizations[key] = localization.get_value if localization
+      return localization.translation if startup_process && localization.is_changed?
+      localizations[key] = localization.translation if localization
     end
 
     def update_cache(key, value)
@@ -79,15 +81,17 @@ module Lit
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
       delete_localization(locale, key_without_locale)
+      @localization_key_object_cache = {}
+      @localization_object_cache = {}
     end
 
     def load_all_translations
-      first = Localization.order(id: :asc).first
-      last = Localization.order(id: :desc).first
+      first = Localization.active.order(id: :asc).first
+      last = Localization.active.order(id: :desc).first
       if !first || (!localizations.has_key?(first.full_key) ||
         !localizations.has_key?(last.full_key))
-        Localization.includes([:locale, :localization_key]).find_each do |l|
-          localizations[l.full_key] = l.get_value
+        Localization.includes(%i[locale localization_key]).active.find_each do |l|
+          localizations[l.full_key] = l.translation
         end
       end
     end
@@ -96,8 +100,9 @@ module Lit
       key = key.to_s
       locale_key, key_without_locale = split_key(key)
       locale = find_locale(locale_key)
+      @localization_object_cache.delete(key)
       localization = find_localization(locale, key_without_locale, default_fallback: true)
-      localizations[key] = localization.get_value if localization
+      localizations[key] = localization.translation if localization
     end
 
     def delete_key(key)
@@ -105,11 +110,19 @@ module Lit
       localizations.delete(key)
       key_without_locale = split_key(key).last
       localization_keys.delete(key_without_locale)
+      @localization_object_cache.delete(key)
+      @localization_key_object_cache.delete(key_without_locale)
       I18n.backend.reload!
     end
 
-    def reset
+    def reset_local_cache
       @locale_cache = {}
+      @localization_key_object_cache = {}
+      @localization_object_cache = {}
+    end
+
+    def reset
+      reset_local_cache
       localizations.clear
       localization_keys.clear
       load_all_translations
@@ -124,40 +137,6 @@ module Lit
         @locale_cache[locale_key] = locale
       end
       @locale_cache[locale_key]
-    end
-
-    # this comes directly from copycopter.
-    def export
-      reset
-      localizations_scope = Lit::Localization
-      unless ENV['LOCALES'].blank?
-        locale_keys = ENV['LOCALES'].to_s.split(',') || []
-        locale_ids = Lit::Locale.where(locale: locale_keys).pluck(:id)
-        localizations_scope = localizations_scope.where(locale_id: locale_ids) unless locale_ids.empty?
-      end
-      db_localizations = {}
-      localizations_scope.find_each do |l|
-        db_localizations[l.full_key] = l.get_value
-      end
-      exported_keys = nested_string_keys_to_hash(db_localizations)
-      exported_keys.to_yaml
-    end
-
-    def nested_string_keys_to_hash(db_localizations)
-      # http://subtech.g.hatena.ne.jp/cho45/20061122
-      deep_proc = proc do |_k, s, o|
-        if s.is_a?(Hash) && o.is_a?(Hash)
-          next s.merge(o, &deep_proc)
-        end
-        next o
-      end
-      nested_keys = {}
-      db_localizations.sort.each do |k, v|
-        key_parts = k.to_s.split('.')
-        converted = key_parts.reverse.reduce(v) { |a, n| { n => a } }
-        nested_keys.merge!(converted, &deep_proc)
-      end
-      nested_keys
     end
 
     def get_global_hits_counter(key)
@@ -188,13 +167,17 @@ module Lit
 
     def find_localization(locale, key_without_locale, value: nil, force_array: false, update_value: false, default_fallback: false)
       return nil if value.is_a?(Hash)
+      full_key = "#{locale}.#{key_without_locale}"
       ActiveRecord::Base.transaction do
         localization_key = find_localization_key(key_without_locale)
-        localization = Lit::Localization.where(locale_id: locale.id). \
-                          where(localization_key_id: localization_key.id).first_or_initialize
+        localization = @localization_object_cache[full_key]
+        localization ||=
+          Lit::Localization.where(locale_id: locale.id)
+                           .where(localization_key_id: localization_key.id)
+                           .first_or_initialize
         if update_value || localization.new_record?
           if value.is_a?(Array)
-            value = parse_array_value(value) unless force_array
+            value = parse_array_value(value, locale) unless force_array
           elsif !value.nil?
             value = parse_value(value, locale)
           else
@@ -204,11 +187,17 @@ module Lit
               value = fallback_to_default(localization_key, localization)
             end
           end
-          localization.update_default_value(value)
+          # Prevent overwriting existing default value with nil.
+          # However, if the localization record is #new_record?, we still need
+          # to insert it with an empty default value.
+          localization.locale = locale
+          localization.localization_key = localization_key
+          localization.full_key_str = full_key
+          localization.update_default_value(value) if localization.new_record? || value
+          @localization_object_cache[full_key] = localization
         end
-        return localization
+        localization
       end
-      nil
     end
 
     # fallback to translation in different locale
@@ -236,8 +225,8 @@ module Lit
     def find_localization_for_delete(locale, key_without_locale)
       localization_key = find_localization_key_for_delete(key_without_locale)
       return nil unless localization_key
-      Lit::Localization.find_by(locale_id: locale.id,
-                                localization_key_id: localization_key.id)
+      Lit::Localization.active.find_by(locale_id: locale.id,
+                                       localization_key_id: localization_key.id)
     end
 
     def delete_localization(locale, key_without_locale)
@@ -257,11 +246,12 @@ module Lit
       new_value = nil
       case v
         when Symbol then
-          lk = Lit::LocalizationKey.where(localization_key: v.to_s).first
+          lk = @localization_key_object_cache[v.to_s] || \
+            Lit::LocalizationKey.where(localization_key: v.to_s).first
           if lk
-            loca = Lit::Localization.where(locale_id: locale.id).
+            loca = Lit::Localization.active.where(locale_id: locale.id).
                         where(localization_key_id: lk.id).first
-            new_value = loca.get_value if loca && loca.get_value.present?
+            new_value = loca.translation if loca && loca.translation.present?
           end
         when String then
           new_value = v
@@ -275,7 +265,7 @@ module Lit
       new_value
     end
 
-    def parse_array_value(value)
+    def parse_array_value(value, locale)
       new_value = nil
       value_clone = value.dup
       while (v = value_clone.shift) && v.present?
@@ -286,14 +276,19 @@ module Lit
     end
 
     def find_localization_key(key_without_locale)
-      unless localization_keys.key?(key_without_locale)
-        find_or_create_localization_key(key_without_locale)
-      else
-        Lit::LocalizationKey.find_by(id: localization_keys[key_without_locale]) || find_or_create_localization_key(key_without_locale)
-      end
+      return @localization_key_object_cache[key_without_locale] if @localization_key_object_cache.key?(key_without_locale)
+      @localization_key_object_cache[key_without_locale] = if localization_keys.key?(key_without_locale)
+                                                             Lit::LocalizationKey.find_by(
+                                                               id: localization_keys[key_without_locale]
+                                                             ) || find_or_create_localization_key(key_without_locale)
+                                                           else
+                                                             find_or_create_localization_key(key_without_locale)
+                                                           end
+      @localization_key_object_cache[key_without_locale]
     end
 
     def find_localization_key_for_delete(key_without_locale)
+      return @localization_key_object_cache[key_without_locale] if @localization_key_object_cache.key?(key_without_locale)
       lk = Lit::LocalizationKey.find_by(id: localization_keys[key_without_locale]) if localization_keys.has_key?(key_without_locale)
       lk || Lit::LocalizationKey.where(localization_key: key_without_locale).first
     end
@@ -303,7 +298,11 @@ module Lit
     end
 
     def find_or_create_localization_key(key_without_locale)
-      localization_key = Lit::LocalizationKey.where(localization_key: key_without_locale).first_or_create!
+      localization_key = Lit::LocalizationKey.find_or_initialize_by(
+        localization_key: key_without_locale
+      )
+      localization_key.is_visited_again = true if localization_key.is_deleted?
+      localization_key.save! if localization_key.changed?
       localization_keys[key_without_locale] = localization_key.id
       localization_key
     end
