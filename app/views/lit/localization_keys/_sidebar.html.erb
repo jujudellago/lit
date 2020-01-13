@@ -53,14 +53,18 @@
           <% end %>
         </li>
       <% end %>
-      <% @prefixes.each do |p| %>
+      <% @prefixes.each do |p| 
+	unless Lit.ignored_keys.any?{ |k| p.start_with?(k) } 
+	%>
         <li class="key_prefix">
         <%= link_to url_for(@search_options.merge(:key_prefix=>p)) do %>
           <%= draw_icon('chevron-right') %>
           <%=  p.split('.').last %>
         <% end %>
         </li>
-      <% end %>
+      <% end
+end
+ %>
     </ul>
   </div>
 <% end %>
