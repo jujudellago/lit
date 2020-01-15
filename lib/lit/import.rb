@@ -32,8 +32,10 @@ module Lit
         I18n.with_locale(locale) do
           yml = parsed_yaml[locale.to_s]
           Hash[*Lit::Cache.flatten_hash(yml)].each do |key, default_translation|
-            next if default_translation.nil? && skip_nil
-            upsert(locale, key, default_translation)
+            unless Lit.ignored_keys.any?{ |k| key.start_with?(k) } 
+              next if default_translation.nil? && skip_nil
+              upsert(locale, key, default_translation)
+            end
           end
         end
       end

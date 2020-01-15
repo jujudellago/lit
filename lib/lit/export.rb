@@ -12,7 +12,9 @@ module Lit
       end
       db_localizations = {}
       localizations_scope.find_each do |l|
-        db_localizations[l.full_key] = l.translation
+        unless Lit.ignored_keys.any?{ |k| l.full_key.start_with?(k) }         
+          db_localizations[l.full_key] = l.translation
+        end
       end
 
       case format
